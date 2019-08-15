@@ -64,6 +64,7 @@ export class AmplifyAppSyncSimulator {
     const lastFunctions = this.functions;
     const lastDataSources = this.dataSources;
     try {
+      this._appSyncConfig = config.appSync;
       this.mappingTemplates = config.mappingTemplates.reduce((map, template) => {
         map.set(template.path, new VelocityTemplate(template));
         return map;
@@ -114,7 +115,6 @@ export class AmplifyAppSyncSimulator {
         this,
       );
       this._config = config;
-      this._appSyncConfig = config.appSync;
     } catch (e) {
       this._schema = lastSchema;
       this.resolvers = lastResolverMap;

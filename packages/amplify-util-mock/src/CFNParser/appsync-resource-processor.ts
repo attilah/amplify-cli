@@ -1,7 +1,7 @@
 import { CloudFormationParseContext } from './types';
 import { isPlainObject } from 'lodash';
 import { parseValue } from './field-parser';
-import { AmplifyAppSyncSimulatorConfig } from 'amplify-appsync-simulator';
+import { AmplifyAppSyncSimulatorConfig, AmplifyAppSyncAPIConfig } from 'amplify-appsync-simulator';
 const CFN_DEFAULT_PARAMS = {
   'AWS::Region': 'us-east-1-fake',
   'AWS::AccountId': '12345678910',
@@ -96,14 +96,31 @@ export function graphQLAPIResourceHandler(
   resource,
   cfnContext: CloudFormationParseContext,
   transformResult: any
-) {
+): AmplifyAppSyncAPIConfig {
   const apiId = 'amplify-test-api-id';
   const processedResource = {
     type: resource.Type,
     name: cfnContext.params.AppSyncApiName || 'AppSyncTransformer',
-    authenticationType: resource.Properties.AuthenticationType,
+    defaultAuthenticationType: {
+      authenticationType: resource.Properties.AuthenticationType,
+      ...(resource.Properties.OpenIDConnectConfig ? { openIDConnectConfig : resource.Properties.OpenIDConnectConfig } : {}),
+      ...(resource.Properties.UserPoolConfig ? { cognitoUserPoolConfig: resource.Properties.UserPoolConfig}: {})
+    },
     // authenticationType: parseValue(resource.Properties.AuthenticationType, cfnContext,  transformResult: any),
     ref: `arn:aws:appsync:us-east-1:123456789012:apis/${apiId}`,
+    ...(resource.Properties.AdditionalAuthenticationProviders
+      ? {
+          additionalAuthenticationProviders: resource.Properties.AdditionalAuthenticationProviders.map(
+            p => {
+              return {
+                authenticationType: p.AuthenticationType,
+                ...(p.OpenIDConnectConfig ? { openIDConnectConfig: p.OpenIDConnectConfig } : {}),
+                ...(p.CognitoUserPoolConfig ? { cognitoUserPoolConfig: p.CognitoUserPoolConfig}: {})
+              };
+            }
+          ),
+        }
+      : {}),
   };
   return processedResource;
 }
@@ -240,8 +257,9 @@ export function processResources(
     tables: [],
     appSync: {
       name: '',
-      authenticationType: '',
+      defaultAuthenticationType: {},
       apiKey: null,
+      additionalAuthenticationProviders: {}
     },
   };
   Object.entries(resources).forEach(entry => {
@@ -274,7 +292,8 @@ export function processResources(
           break;
         case 'AWS::AppSync::GraphQLApi':
           processedResources.appSync.name = result.name;
-          processedResources.appSync.authenticationType = result.authenticationType;
+          processedResources.appSync.defaultAuthenticationType = result.defaultAuthenticationType;
+          processedResources.appSync.additionalAuthenticationProviders = result.additionalAuthenticationProviders;
           break;
         case 'AWS::AppSync::ApiKey':
           processedResources.appSync.apiKey = result.value;

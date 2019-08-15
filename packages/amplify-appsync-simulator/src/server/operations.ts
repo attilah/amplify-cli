@@ -7,10 +7,14 @@ import { join } from 'path';
 import * as portfinder from 'portfinder';
 import { address as getLocalIpAddress } from 'ip';
 import { AmplifyAppSyncSimulator } from '..';
-import { AmplifyAppSyncSimulatorAuthenticationType, AppSyncSimulatorServerConfig } from '../type-definition';
+import {
+  AmplifyAppSyncSimulatorAuthenticationType,
+  AppSyncSimulatorServerConfig,
+  AmplifyAppSyncAuthenticationProviderOIDCConfig,
+} from '../type-definition';
 import { exposeGraphQLErrors } from '../utils/expose-graphql-errors';
 import { SubscriptionServer } from './subscription';
-
+import { AmplifyAppSyncAuthenticationProviderCognitoConfig } from '../type-definition';
 
 const BASE_PORT = 8900;
 const MAX_PORT = 9999;
@@ -76,37 +80,18 @@ export class OperationServer {
       const appSyncConfig = this.simulatorContext.appSyncConfig;
       const { headers } = request;
       const apiKey = headers['x-api-key'];
-
-      const authorization = headers.Authorization || headers.authorization;
-      const jwt = authorization ? jwtDecode(authorization) : {};
-      if (appSyncConfig.authenticationType === AmplifyAppSyncSimulatorAuthenticationType.API_KEY) {
-        let error = {
-          errorType: 'UnauthorizedException',
-          message: '',
-        };
-        if (!apiKey) {
-          error.message = 'Missing authorization header';
-          return response.status(401).send(error);
-        }
-        if (apiKey !== appSyncConfig.apiKey) {
-          error.message = 'You are not authorized to make this call.';
-          return response.status(401).send(error);
-        }
-      } else if (
-        appSyncConfig.authenticationType ===
-          AmplifyAppSyncSimulatorAuthenticationType.AMAZON_COGNITO_USER_POOLS ||
-        appSyncConfig.authenticationType == AmplifyAppSyncSimulatorAuthenticationType.OPENID_CONNECT
-      ) {
-        if (Object.keys(jwt).length === 0) {
-          return response.status(401).send({
-            errors: [
-              {
-                errorType: 'UnauthorizedException',
-                message: 'Unauthorized',
-              },
-            ],
-          });
-        }
+      let requestAuthorizationMode;
+      try {
+        requestAuthorizationMode = this.checkAuthorization(request);
+      } catch (e) {
+        return response.status(401).send({
+          errors: [
+            {
+              errorType: 'UnauthorizedException',
+              message: e.message,
+            },
+          ],
+        });
       }
 
       const { variables = {}, query, operationName } = request.body;
@@ -127,8 +112,9 @@ export class OperationServer {
       const {
         definitions: [{ operation: queryType }],
       } = doc as any; // Remove casting
-
-      const context = { jwt, request, appsyncErrors: {} };
+      const authorization = headers.Authorization || headers.authorization;
+      const jwt = authorization ? jwtDecode(authorization) : {};
+      const context = { jwt, requestAuthorizationMode, request, appsyncErrors: [] };
       switch (queryType) {
         case 'query':
         case 'mutation':
@@ -172,5 +158,117 @@ export class OperationServer {
         errorMessage: e.message,
       });
     }
+  }
+
+  private checkAuthorization(request): AmplifyAppSyncSimulatorAuthenticationType {
+    const appSyncConfig = this.simulatorContext.appSyncConfig;
+    const { headers } = request;
+    const apiKey = headers['x-api-key'];
+
+    const authorization = headers.Authorization || headers.authorization;
+    const jwtToken = authorization ? jwtDecode(authorization) : null;
+    const allowedAuthTypes = this.getAllowedAuthTypes();
+    if (apiKey && allowedAuthTypes.includes(AmplifyAppSyncSimulatorAuthenticationType.API_KEY)) {
+      if (appSyncConfig.apiKey === apiKey) {
+        return AmplifyAppSyncSimulatorAuthenticationType.API_KEY;
+      }
+      throw new Error('UnauthorizedException');
+    } else if (jwtToken) {
+      if (this.isCognitoUserPoolToken(jwtToken)) {
+        return AmplifyAppSyncSimulatorAuthenticationType.AMAZON_COGNITO_USER_POOLS;
+      } else if (this.isOidcToken(jwtToken)) {
+        return AmplifyAppSyncSimulatorAuthenticationType.OPENID_CONNECT;
+      }
+      throw new Error('UnauthorizedException');
+    } else {
+      throw new Error('Missing authorization header');
+    }
+
+  }
+
+  private getAllowedAuthTypes(): AmplifyAppSyncSimulatorAuthenticationType[] {
+    const appSyncConfig = this.simulatorContext.appSyncConfig;
+    const allAuthTypes = [
+      appSyncConfig.defaultAuthenticationType,
+      ...appSyncConfig.additionalAuthenticationProviders,
+    ];
+    return allAuthTypes.map(c => c.authenticationType);
+  }
+
+  private isCognitoUserPoolToken(token): boolean {
+    let cupToken: boolean = false;
+    const allowedAuthTypes = this.getAllowedAuthTypes();
+    const appSyncConfig = this.simulatorContext.appSyncConfig;
+    const allAuthTypes = [
+      appSyncConfig.defaultAuthenticationType,
+      ...appSyncConfig.additionalAuthenticationProviders,
+    ];
+    const cognitoAppClientIdRegExps = allAuthTypes
+      .filter(
+        authType =>
+          authType.authenticationType ===
+          AmplifyAppSyncSimulatorAuthenticationType.AMAZON_COGNITO_USER_POOLS
+      )
+      .map(
+        (authType: AmplifyAppSyncAuthenticationProviderCognitoConfig) =>
+          authType.cognitoUserPoolConfig.AppIdClientRegex
+      )
+      .filter(c => !!c);
+
+    if (
+      allowedAuthTypes.includes(
+        AmplifyAppSyncSimulatorAuthenticationType.AMAZON_COGNITO_USER_POOLS
+      ) &&
+      token.iss.startsWith('https://cognito-idp.')
+    ) {
+      if (cognitoAppClientIdRegExps.length) {
+        cupToken = cognitoAppClientIdRegExps.some(t => new RegExp(t).test(token.aud));
+      } else {
+        cupToken = true;
+      }
+    }
+
+    return cupToken;
+  }
+
+  private isOidcToken(token): boolean {
+    let oidcToken: boolean = false;
+    const allowedAuthTypes = this.getAllowedAuthTypes();
+    const appSyncConfig = this.simulatorContext.appSyncConfig;
+    const allAuthTypes = [
+      appSyncConfig.defaultAuthenticationType,
+      ...appSyncConfig.additionalAuthenticationProviders,
+    ];
+
+    const oidcIssuers = allAuthTypes
+      .filter(
+        authType =>
+          authType.authenticationType === AmplifyAppSyncSimulatorAuthenticationType.OPENID_CONNECT
+      )
+      .map((auth: AmplifyAppSyncAuthenticationProviderOIDCConfig) => {
+        return auth.openIDConnectConfig.Issuer;
+      });
+
+    const oidcClientIds = allAuthTypes
+      .filter(
+        authType =>
+          authType.authenticationType === AmplifyAppSyncSimulatorAuthenticationType.OPENID_CONNECT
+      )
+      .map(
+        (authType: AmplifyAppSyncAuthenticationProviderOIDCConfig) =>
+          authType.openIDConnectConfig.ClientId
+      );
+
+    if (allowedAuthTypes.includes(AmplifyAppSyncSimulatorAuthenticationType.OPENID_CONNECT)) {
+      if (oidcIssuers.length && oidcIssuers.includes(token.iss)) {
+        if (oidcClientIds.length) {
+          oidcToken = oidcClientIds.includes(token.aud);
+        } else {
+          oidcToken = true;
+        }
+      }
+    }
+
+    return oidcToken;
   }
 }

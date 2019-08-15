@@ -1,9 +1,9 @@
-import { buildASTSchema, concatAST, DocumentNode, GraphQLObjectType, parse, Source } from 'graphql';
-import { makeExecutableSchema } from 'graphql-tools';
+import { buildASTSchema, concatAST, DocumentNode, GraphQLObjectType, parse, Source, defaultFieldResolver } from 'graphql';
+import { makeExecutableSchema, forEachField, buildSchemaFromTypeDefinitions } from 'graphql-tools';
 import { AmplifyAppSyncSimulator } from '..';
 import { AppSyncSimulatorBaseResolverConfig } from '../type-definition';
 import { scalars } from './appsync-scalars';
-import { AwsSubscribe } from './directives';
+import { AwsSubscribe, AwsAuth, generateAuthResolvers } from './directives';
 import AppSyncSimulatorDirectiveBase from './directives/directive-base';
 const KNOWN_DIRECTIVES: {
   name: string;
@@ -69,9 +69,12 @@ export function generateResolvers(
     // When there are no subscriptions in the doc, don't include subscription resolvers
     delete resolvers.Subscription;
   }
+
+  const resolverMapWithAuth = generateAuthResolvers(doc, resolvers, simulatorContext);
+
   return makeExecutableSchema({
     typeDefs: doc,
-    resolvers,
+    resolvers: resolverMapWithAuth,
     schemaDirectives,
   });
 }
@@ -111,4 +114,10 @@ export function addDirective(name: string, visitor: typeof AppSyncSimulatorDirec
   });
 }
 
+
+
 addDirective('aws_subscribe', AwsSubscribe);
+addDirective('aws_api_key', AwsAuth);
+addDirective('aws_oidc', AwsAuth);
+addDirective('aws_cognito_user_pools', AwsAuth);
+
