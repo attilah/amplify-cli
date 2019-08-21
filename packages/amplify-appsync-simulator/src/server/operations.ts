@@ -183,7 +183,6 @@ export class OperationServer {
     } else {
       throw new Error('Missing authorization header');
     }
-
   }
 
   private getAllowedAuthTypes(): AmplifyAppSyncSimulatorAuthenticationType[] {
@@ -221,11 +220,7 @@ export class OperationServer {
       ) &&
       token.iss.startsWith('https://cognito-idp.')
     ) {
-      if (cognitoAppClientIdRegExps.length) {
-        cupToken = cognitoAppClientIdRegExps.some(t => new RegExp(t).test(token.aud));
-      } else {
-        cupToken = true;
-      }
+      cupToken = true;
     }
 
     return cupToken;
@@ -249,23 +244,9 @@ export class OperationServer {
         return auth.openIDConnectConfig.Issuer;
       });
 
-    const oidcClientIds = allAuthTypes
-      .filter(
-        authType =>
-          authType.authenticationType === AmplifyAppSyncSimulatorAuthenticationType.OPENID_CONNECT
-      )
-      .map(
-        (authType: AmplifyAppSyncAuthenticationProviderOIDCConfig) =>
-          authType.openIDConnectConfig.ClientId
-      );
-
     if (allowedAuthTypes.includes(AmplifyAppSyncSimulatorAuthenticationType.OPENID_CONNECT)) {
       if (oidcIssuers.length && oidcIssuers.includes(token.iss)) {
-        if (oidcClientIds.length) {
-          oidcToken = oidcClientIds.includes(token.aud);
-        } else {
-          oidcToken = true;
-        }
+        oidcToken = true;
       }
     }
 

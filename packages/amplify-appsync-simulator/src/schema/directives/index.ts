@@ -1,2 +1,2 @@
 export { AwsSubscribe } from './aws-subscribe';
-export { AwsAuth, generateAuthResolvers } from './auth'
+export { AwsAuth, protectResolversWithAuthRules } from './auth'

@@ -5,6 +5,4 @@ export default abstract class AppSyncSimulatorDirectiveBase extends SchemaDirect
   name: string;
   static typeDefinitions: string;
   static simulatorContext: AmplifyAppSyncSimulator;
-  before(): void {}
-  after(): void {}
 }
