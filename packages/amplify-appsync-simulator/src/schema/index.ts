@@ -3,7 +3,7 @@ import { makeExecutableSchema } from 'graphql-tools';
 import { AmplifyAppSyncSimulator } from '..';
 import { AppSyncSimulatorBaseResolverConfig } from '../type-definition';
 import { scalars } from './appsync-scalars';
-import { AwsSubscribe } from './directives';
+import { AwsAuth, AwsSubscribe, protectResolversWithAuthRules } from './directives';
 import AppSyncSimulatorDirectiveBase from './directives/directive-base';
 const KNOWN_DIRECTIVES: {
   name: string;
@@ -22,7 +22,6 @@ export function generateResolvers(
     'AppSync-scalar.json'
   );
 
-  // const directives = KNOWN_DIRECTIVES.map(d => parse(d.visitor.typeDefinitions));
   const directives = KNOWN_DIRECTIVES.reduce((set, d) => {
     set.add(d.visitor);
     return set;
@@ -69,9 +68,12 @@ export function generateResolvers(
     // When there are no subscriptions in the doc, don't include subscription resolvers
     delete resolvers.Subscription;
   }
+
+  const resolverMapWithAuth = protectResolversWithAuthRules(doc, resolvers, simulatorContext);
+
   return makeExecutableSchema({
     typeDefs: doc,
-    resolvers,
+    resolvers: resolverMapWithAuth,
     schemaDirectives,
   });
 }
@@ -112,3 +114,7 @@ export function addDirective(name: string, visitor: typeof AppSyncSimulatorDirec
 }
 
 addDirective('aws_subscribe', AwsSubscribe);
+addDirective('aws_api_key', AwsAuth);
+addDirective('aws_oidc', AwsAuth);
+addDirective('aws_cognito_user_pools', AwsAuth);
+addDirective('aws_auth', AwsAuth);

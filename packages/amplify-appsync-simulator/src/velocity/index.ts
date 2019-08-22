@@ -73,7 +73,7 @@ export class VelocityTemplate {
     const { source, arguments: argument, result, stash, prevResult } = ctxValues;
 
     const {
-      jwt: { iss: issuer, sub, 'cognito:username': username },
+      jwt: { iss: issuer, sub, 'cognito:username': cognitoUserName, username, },
       request,
     } = requestContext;
 
@@ -82,10 +82,11 @@ export class VelocityTemplate {
     const identity = convertToJavaTypes({
       sub,
       issuer,
-      username,
+      'cognito:username': cognitoUserName,
+      username: username || cognitoUserName,
       sourceIp: ['0.0.0.0'],
-      defaultStrategy: 'ALLOW',
       claims: requestContext.jwt,
+      defaultAuthStrategy: 'ALLOW'
     });
 
     const vtlContext = {
