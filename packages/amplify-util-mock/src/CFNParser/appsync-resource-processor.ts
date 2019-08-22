@@ -293,7 +293,7 @@ export function processResources(
         case 'AWS::AppSync::GraphQLApi':
           processedResources.appSync.name = result.name;
           processedResources.appSync.defaultAuthenticationType = result.defaultAuthenticationType;
-          processedResources.appSync.additionalAuthenticationProviders = result.additionalAuthenticationProviders;
+          processedResources.appSync.additionalAuthenticationProviders = result.additionalAuthenticationProviders || {};
           break;
         case 'AWS::AppSync::ApiKey':
           processedResources.appSync.apiKey = result.value;

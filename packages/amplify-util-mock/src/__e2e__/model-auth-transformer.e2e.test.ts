@@ -154,7 +154,14 @@ beforeAll(async () => {
   const transformer = new GraphQLTransform({
     transformers: [
       new DynamoDBModelTransformer(),
-      new ModelAuthTransformer({ authMode: 'AMAZON_COGNITO_USER_POOLS' }),
+      new ModelAuthTransformer({
+        authConfig: {
+          defaultAuthentication: {
+            authenticationType: 'AMAZON_COGNITO_USER_POOLS',
+          },
+          additionalAuthenticationProviders: [],
+        },
+      }),
     ],
   });
   const userPoolResponse = await createUserPool(cognitoClient, `UserPool${STACK_NAME}`);
@@ -222,6 +229,9 @@ beforeAll(async () => {
     });
 
     const accessToken = authResAfterGroup.getAccessToken().getJwtToken();
+    console.log('Access token');
+    console.log(accessToken)
+    console.log('\n\n\n\n\n\n\n');
     GRAPHQL_CLIENT_1_ACCESS = new GraphQLClient(GRAPHQL_ENDPOINT, {
       Authorization: accessToken,
     });
@@ -287,6 +297,7 @@ test('Test createPost mutation', async () => {
   expect(response.data.createPost.updatedAt).toBeDefined();
   expect(response.data.createPost.owner).toEqual(USERNAME1);
 
+  console.log('Using access token based client\n');
   const response2 = await GRAPHQL_CLIENT_1_ACCESS.query(
     `mutation {
         createPost(input: { title: "Hello, World!" }) {

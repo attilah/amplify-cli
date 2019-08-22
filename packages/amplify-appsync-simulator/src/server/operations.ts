@@ -77,9 +77,7 @@ export class OperationServer {
 
   private async handleRequest(request, response) {
     try {
-      const appSyncConfig = this.simulatorContext.appSyncConfig;
       const { headers } = request;
-      const apiKey = headers['x-api-key'];
       let requestAuthorizationMode;
       try {
         requestAuthorizationMode = this.checkAuthorization(request);
@@ -191,7 +189,7 @@ export class OperationServer {
       appSyncConfig.defaultAuthenticationType,
       ...appSyncConfig.additionalAuthenticationProviders,
     ];
-    return allAuthTypes.map(c => c.authenticationType);
+    return allAuthTypes.map(c => c.authenticationType).filter(c => c);
   }
 
   private isCognitoUserPoolToken(token): boolean {
@@ -202,17 +200,7 @@ export class OperationServer {
       appSyncConfig.defaultAuthenticationType,
       ...appSyncConfig.additionalAuthenticationProviders,
     ];
-    const cognitoAppClientIdRegExps = allAuthTypes
-      .filter(
-        authType =>
-          authType.authenticationType ===
-          AmplifyAppSyncSimulatorAuthenticationType.AMAZON_COGNITO_USER_POOLS
-      )
-      .map(
-        (authType: AmplifyAppSyncAuthenticationProviderCognitoConfig) =>
-          authType.cognitoUserPoolConfig.AppIdClientRegex
-      )
-      .filter(c => !!c);
+
 
     if (
       allowedAuthTypes.includes(

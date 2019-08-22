@@ -48,6 +48,20 @@ jobs:
           name: Run GraphQL end-to-end tests
           command: cd packages/graphql-transformers-e2e-tests/ && yarn e2e --maxWorkers=3
           no_output_timeout: 90m
+  mock_e2e_tests:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ./
+      - restore_cache:
+          key: amplify-cli-yarn-deps-{{ .Branch }}-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install Java
+          command: sudo apt-get install default-jdk
+      - run:
+          name: Run Transformer end-to-end tests with mock server
+          command: cd packages/amplify-util-mock/ && yarn e2e
+          no_output_timeout: 90m
 
   amplify_e2e_tests:
     <<: *defaults
@@ -192,6 +206,14 @@ workflows:
               only:
                 - master
                 - graphql_e2e_testing
+          requires:
+            - build
+      - mock_e2e_tests:
+          filters:
+            branches:
+              only:
+                - master
+                - beta
           requires:
             - build
       - integration_test:
