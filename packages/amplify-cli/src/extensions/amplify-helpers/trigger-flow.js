@@ -140,7 +140,7 @@ const updateTrigger = async triggerOptions => {
         triggerEventPath,
         skipEdit,
       },
-      functionName
+      functionName,
     );
     if (values && values.length > 0) {
       for (let v = 0; v < values.length; v += 1) {
@@ -220,7 +220,7 @@ const triggerFlow = async (context, resource, category, previousTriggers = {}) =
   const pluginPath = context.amplify.getCategoryPlugins(context)[category];
 
   // path to trigger directory in category
-  const triggerPath = `${pluginPath}/provider-utils/awscloudformation/triggers/`;
+  const triggerPath = `${pluginPath}/templates/triggers/`;
 
   // get available triggers
   const triggerOptions = choicesFromMetadata(triggerPath, resource, true);
@@ -271,7 +271,7 @@ const triggerFlow = async (context, resource, category, previousTriggers = {}) =
         delete triggerObj[Object.keys(tempTriggerObj)[index]];
       }
     },
-    { triggerObj }
+    { triggerObj },
   );
   return triggerObj;
 };
@@ -302,7 +302,7 @@ const getTriggerPermissions = async (context, triggers, category) => {
 
   for (let c = 0; c < triggerKeys.length; c += 1) {
     const index = triggerKeys[c];
-    const meta = context.amplify.getTriggerMetadata(`${pluginPath}/provider-utils/awscloudformation/triggers/${index}`, index);
+    const meta = context.amplify.getTriggerMetadata(`${pluginPath}/templates/triggers/${index}`, index);
 
     const moduleKeys = Object.keys(meta);
     for (let v = 0; v < moduleKeys.length; v += 1) {
@@ -328,7 +328,7 @@ const learnMoreLoop = async (key, map, metaData, question) => {
     if (metaData.URL) {
       prefix = `\nAdditional information about the ${key} available for ${map} can be found here: ${chalkpipe(
         null,
-        chalk.blue.underline
+        chalk.blue.underline,
       )(metaData.URL)}\n`;
       prefix = prefix.concat('\n');
     } else {
@@ -336,7 +336,7 @@ const learnMoreLoop = async (key, map, metaData, question) => {
       Object.values(metaData).forEach(m => {
         prefix = prefix.concat('\n');
         prefix = prefix.concat(
-          `${chalkpipe(null, chalk.green)('\nName:')} ${m.name}${chalkpipe(null, chalk.green)('\nDescription:')} ${m.description}\n`
+          `${chalkpipe(null, chalk.green)('\nName:')} ${m.name}${chalkpipe(null, chalk.green)('\nDescription:')} ${m.description}\n`,
         );
         prefix = prefix.concat('\n');
       });
@@ -387,7 +387,7 @@ const copyFunctions = async (key, value, category, context, targetPath) => {
       if (value === 'custom') {
         source = `${functionPath}/provider-utils/awscloudformation/function-template-dir/trigger-custom.js`;
       } else {
-        source = `${pluginPath}/provider-utils/awscloudformation/triggers/${key}/${value}.js`;
+        source = `${pluginPath}/templates/triggers/${key}/${value}.js`;
       }
       fsExtra.copySync(source, `${targetPath}/${value}.js`);
       await openEditor(context, targetPath, value);
@@ -400,7 +400,7 @@ const copyFunctions = async (key, value, category, context, targetPath) => {
 const cleanFunctions = async (key, values, category, context, targetPath) => {
   const pluginPath = context.amplify.getCategoryPlugins(context)[category];
   try {
-    const meta = context.amplify.getTriggerMetadata(`${pluginPath}/provider-utils/awscloudformation/triggers/${key}`, key);
+    const meta = context.amplify.getTriggerMetadata(`${pluginPath}/templates/triggers/${key}`, key);
     const dirContents = fs.readdirSync(targetPath);
     for (let x = 0; x < dirContents.length; x += 1) {
       if (dirContents[x] !== 'custom.js') {
@@ -433,7 +433,7 @@ const cleanFunctions = async (key, values, category, context, targetPath) => {
 const getTriggerEnvVariables = (context, trigger, category) => {
   const pluginPath = context.amplify.getCategoryPlugins(context)[category];
   let env = [];
-  const meta = context.amplify.getTriggerMetadata(`${pluginPath}/provider-utils/awscloudformation/triggers/${trigger.key}`, trigger.key);
+  const meta = context.amplify.getTriggerMetadata(`${pluginPath}/templates/triggers/${trigger.key}`, trigger.key);
   if (trigger.modules) {
     for (let x = 0; x < trigger.modules.length; x++) {
       if (meta[trigger.modules[x]] && meta[trigger.modules[x]].env) {

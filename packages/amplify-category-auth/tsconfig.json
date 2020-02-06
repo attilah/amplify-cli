@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "strict": false, // TODO enable
+    "composite": false,
+    "allowJs": true,
+    "declaration": false,
+    "declarationMap": false,
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": [
+    "src"
+  ]
+}

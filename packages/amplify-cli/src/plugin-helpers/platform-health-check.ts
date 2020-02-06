@@ -20,6 +20,7 @@ export async function checkPlatformHealth(pluginPlatform: PluginPlatform): Promi
   const mismatchedOfficialPlugins: Array<PluginDescription> = [];
 
   Object.keys(officialPlugins).forEach((plugin: string) => {
+    console.log('p:', plugin);
     const officialPluginDescription = officialPlugins[plugin];
     if (activePlugins[officialPluginDescription.name]) {
       let isPackageMatching = false;
@@ -78,7 +79,6 @@ export function getOfficialPlugins() {
   const packageJsonFilePath = path.normalize(path.join(__dirname, '../../package.json'));
   const packageJson = readJsonFileSync(packageJsonFilePath);
   const { officialPlugins } = packageJson.amplify;
-
 
   const dependencies: { [key: string]: string } = packageJson.dependencies;
 

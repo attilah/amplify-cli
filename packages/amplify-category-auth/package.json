@@ -9,12 +9,13 @@
   },
   "author": "Amazon Web Services",
   "license": "Apache-2.0",
-  "main": "index.js",
+  "main": "lib/index.js",
   "keywords": [
     "amplify",
     "aws"
   ],
-   "scripts": {
+  "scripts": {
+    "build": "tsc",
     "test": "jest",
     "test-watch": "jest --watch",
     "test-ci": "jest --ci -i"
