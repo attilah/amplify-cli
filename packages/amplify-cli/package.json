@@ -1,7 +1,7 @@
 {
   "name": "@aws-amplify/cli",
   "version": "4.52.0",
-  "description": "Amplify CLI",
+  "description": "Amplify CLI Foo",
   "repository": {
     "type": "git",
     "url": "https://github.com/aws-amplify/amplify-cli.git",
